@@ -13,11 +13,33 @@ class ThresholdChangeStates():
     recv_eur_over_krw = 4 
     cancel = 0
 
+class MarkupKeyboard():
+    CONFIRM = "Confirm"
+    REENTER = "Re-enter"
+
+class MessageTemplates():
+    NEW_KRW_OVER_EUR_PROMPT = \
+        """Please specify the following:
+        Threshold value for Korean price being higher than European price (in %)"""
+
+    NEW_EUR_OVER_KRW_PROMPT = \
+        """Please specify the following: 
+        Threshold value for European price being higher than Korean price (in %)"""
+
+    SKIP_KRW_OVER_EUR_PROMPT = \
+        """"Skipping threshold change for KRW over EUR"""
+
+    SKIP_EUR_OVER_KRW_PROMPT = \
+        """Skipping threshold change for EUR over KRW"""
+
+    CANCELLATION_PROMPT = "Threshold change cancelled."
+
 class ArbCallbacks():
 
     def __init__(self) -> None:
         self.model = ArbitrageFinder.get_model()
         self.job = None 
+        self.check_val_perc_not_dec = False 
 
         self.threshold_change_state = {
             "KRW_OVER_EUR" : 1,
@@ -50,14 +72,13 @@ class ArbCallbacks():
         return True 
 
     def ask_threshold_krw_over_eur(self, update, context):
-
         logger.debug("Terminating existing arb jobs")
         CHAT_ID = update.effective_chat.id
+        job_name = str(CHAT_ID)
+        self.remove_arb_jobs(job_name, context)
 
-        self.remove_arb_jobs(str(CHAT_ID), context)
-
-        update.message.reply_text("Please specify the following:\n" +  
-            "Threshold value for Korean price being higher than European price (in %)")
+        update.message.reply_text(MessageTemplates.NEW_KRW_OVER_EUR_PROMPT)
+        logger.debug(f"Returning next state {ThresholdChangeStates.recv_krw_over_eur}")
 
         return ThresholdChangeStates.recv_krw_over_eur
 
@@ -66,11 +87,34 @@ class ArbCallbacks():
         logger.debug("Received new krw over eur threshold value")
 
         userText = update.message.text # handle percentage symbol 
-        new_thresh = float(userText)
-        old_thresh = self.model.krw_over_eur_threshold
+
+        # check if user text is valid 
+        try: 
+            threshVal = float(userText)
+        except ValueError: 
+
+            if userText == "/skip":
+                update.message.reply_text(MessageTemplates.SKIP_KRW_OVER_EUR_PROMPT)
+                update.message.reply_text(MessageTemplates.NEW_EUR_OVER_KRW_PROMPT)
+                return ThresholdChangeStates.ask_eur_over_krw
+            
+            update.message.reply_text(
+                f"{userText} not recognised as a valid number. Please try again"
+            )
+            # return to this state
+            return ThresholdChangeStates.recv_krw_over_eur
+
+        new_thresh = threshVal
+        old_thresh = self.model.krw_over_eur_threshold * 100
+
+        # value needs to be decimal
+        self.model.update_krw_over_eur_threshold(new_thresh / 100)
+
         update.message.reply_text(
             "Changed threshold for Korean price being higher" + 
             f"than European price from {old_thresh} to {new_thresh}")
+
+        update.message.reply_text(MessageTemplates.NEW_EUR_OVER_KRW_PROMPT)
 
         return ThresholdChangeStates.ask_eur_over_krw
 
@@ -80,38 +124,66 @@ class ArbCallbacks():
 
         userText = update.message.text 
 
-        update.message.reply_text("Please specify the following:\n" + 
-            "Threshold value for European price being higher than Korean price (in %)")
+        try: 
+            new_thresh = float(userText)
+            old_thresh = self.model.eur_over_krw_threshold * 100 # to percentage
+                
+            # val needs to be decimal
+            self.model.update_eur_over_krw_threshold(new_thresh/100)
+
+            update.message.reply_text(
+                "Changed threshold for European price being higher" + 
+                f"than Korean price from {old_thresh}% to {new_thresh}%")
+
+        except ValueError: 
+            if userText == "/skip":
+                update.message.reply_text(MessageTemplates.SKIP_EUR_OVER_KRW_PROMPT)
+            else: 
+                update.message.reply_text(
+                    f"{userText} not recognised as a valid number. Please try again"
+                )
+                return ThresholdChangeStates.ask_eur_over_krw
+
+        keyboard_entry = [MarkupKeyboard.CONFIRM, MarkupKeyboard.REENTER]
+        update.message.reply_text(
+            f"""Please confirm the new thresholds: 
+            EUR greater than KRW : {self.model.krw_over_eur_threshold * 100}%
+            KRW greater than EUR : {self.model.eur_over_krw_threshold * 100}%""",
+            reply_markup=ReplyKeyboardMarkup([keyboard_entry], one_time_keyboard=True)
+        )
 
         return ThresholdChangeStates.recv_eur_over_krw
 
     def receive_threshold_eur_over_krw(self, update, context): 
-        
         logger.debug("Received new eur over krw threshold")
+        response = update.message.text
 
-        return ConversationHandler.END
+        if response == MarkupKeyboard.CONFIRM: 
+            logger.debug("Ending conversation handler")
+            update.message.reply_text("Your threshold changes have been saved")
+
+            # restart arb job with new thresholds 
+            self.start(update, context)
+
+            return ConversationHandler.END
+
+        elif response == MarkupKeyboard.REENTER: 
+            logger.debug("Going back to entry point")
+            update.message.reply_text("Send any message to restart")
+            return ThresholdChangeStates.ask_krw_over_eur
 
     def skip_threshold_krw_over_eur(self, update, context):
-
-        logger.debug("Skipping new krw over eur threshold")
+        logger.debug("Skipping new KRW over EUR threshold")
+        update.message.reply_text(MessageTemplates.SKIP_KRW_OVER_EUR_PROMPT)
         return ThresholdChangeStates.ask_eur_over_krw
 
     def skip_threshold_eur_over_krw(self, update, context):
-
-        logger.debug("Skipping eur over krw threshold")
+        logger.debug("Skipping EUR over KRW threshold")
+        update.message.reply_text(MessageTemplates.SKIP_EUR_OVER_KRW_PROMPT)
         return ConversationHandler.END 
 
     def cancel_change_threshold(self, update, context):
         user = update.message.from_user
         logger.info(f"User {user} cancelled threshold change")
-        update.message.reply_text(
-            "Threshold change cancelled by user"
-        )
-
+        update.message.reply_text(MessageTemplates.CANCELLATION_PROMPT)
         return ConversationHandler.END
-
-    
-
-
-
-

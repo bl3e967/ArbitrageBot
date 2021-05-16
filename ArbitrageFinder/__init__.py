@@ -51,6 +51,12 @@ class Model():
         self.krw_over_eur_threshold = krw_over_eur_thresh
         self.eur_over_krw_threshold = eur_over_krw_thresh
 
+    def update_krw_over_eur_threshold(self, newval:float) -> None:
+        self.krw_over_eur_threshold = newval 
+
+    def update_eur_over_krw_threshold(self, newval:float) -> None:
+        self.eur_over_krw_threshold = newval
+
     def find_arbitrage_opportunity(self):
         '''
         Get coin price data for current datetime.

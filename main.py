@@ -1,4 +1,5 @@
-import logging 
+import logging
+from typing import Text 
 import ArbitrageFinder 
 from ArbitrageBot import callbacks, Regex
 from config import ArbitrageBot as BotConfig 
@@ -24,29 +25,42 @@ def run():
     threshold_change_handler = ConversationHandler(
         entry_points=[CommandHandler('change_threshold', arbCallback.ask_threshold_krw_over_eur)],
         states={
+            
+            callbacks.ThresholdChangeStates.ask_krw_over_eur : [
+                MessageHandler(
+                    Filters.text, 
+                    arbCallback.ask_threshold_krw_over_eur
+                ),
+                CommandHandler("skip", arbCallback.skip_threshold_krw_over_eur)
+            ],
 
             callbacks.ThresholdChangeStates.recv_krw_over_eur : [
                 MessageHandler(
-                    Filters.regex(Regex.DecimalWithoutPercentage) ^ Filters.regex(Regex.DecimalWithPercentage),
+                    Filters.text,
                     arbCallback.receive_threshold_krw_over_eur
                 ),
                 CommandHandler("skip", arbCallback.skip_threshold_krw_over_eur)
             ],
                       
             callbacks.ThresholdChangeStates.ask_eur_over_krw : [
-                MessageHandler(filters=None, callback=arbCallback.ask_threshold_eur_over_krw),
+                MessageHandler(
+                    filters=Filters.text, 
+                    callback=arbCallback.ask_threshold_eur_over_krw
+                ),
             ],
 
             callbacks.ThresholdChangeStates.recv_eur_over_krw : [
                 MessageHandler(
-                    (Filters.regex(Regex.DecimalWithoutPercentage) ^ Filters.regex(Regex.DecimalWithPercentage)),
+                    Filters.text,
                     arbCallback.receive_threshold_eur_over_krw
                 ),
                 CommandHandler("skip", arbCallback.skip_threshold_eur_over_krw)
             ]
         },
 
-        fallbacks=[CommandHandler('cancel', arbCallback.cancel_change_threshold)]
+        fallbacks=[CommandHandler('cancel', arbCallback.cancel_change_threshold)],
+
+        allow_reentry=True
     )
 
     dispatcher.add_handler(start_handler)
