@@ -152,8 +152,8 @@ class ArbCallbacks():
         keyboard_entry = [MarkupKeyboard.CONFIRM, MarkupKeyboard.REENTER]
         update.message.reply_text(
             f"""Please confirm the new thresholds: 
-            EUR greater than KRW : {self.model.krw_over_eur_threshold * 100}%
-            KRW greater than EUR : {self.model.eur_over_krw_threshold * 100}%""",
+            KRW greater than EUR : {self.model.krw_over_eur_threshold * 100}%
+            EUR greater than KRW : {self.model.eur_over_krw_threshold * 100}%""",
             reply_markup=ReplyKeyboardMarkup([keyboard_entry], one_time_keyboard=True)
         )
 
