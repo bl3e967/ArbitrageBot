@@ -27,7 +27,7 @@ class MessageTemplates():
         Threshold value for European price being higher than Korean price (in %)"""
 
     SKIP_KRW_OVER_EUR_PROMPT = \
-        """"Skipping threshold change for KRW over EUR"""
+        """Skipping threshold change for KRW over EUR"""
 
     SKIP_EUR_OVER_KRW_PROMPT = \
         """Skipping threshold change for EUR over KRW"""
