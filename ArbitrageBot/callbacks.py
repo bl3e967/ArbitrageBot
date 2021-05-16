@@ -52,7 +52,12 @@ class ArbCallbacks():
 
         msg = "Adding arbModel.find_arbitrage_opportunity to queue"
         logger.debug(msg)
-        context.bot.send_message(chat_id=CHAT_ID, text=msg)
+        context.bot.send_message(
+            chat_id=CHAT_ID, 
+            text=f"""Model params: 
+        Thresholds: 
+            EUR Over KRW : {self.model.eur_over_krw_threshold*100}%
+            KRW Over EUR : {self.model.krw_over_eur_threshold*100}%""")
 
         _JOB_TIME_DELAY = 10 # arbitrary 10 second delay for starting the job
         self.job = context.job_queue.run_repeating(callback=self.model.run, 
