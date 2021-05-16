@@ -18,6 +18,10 @@ class MarkupKeyboard():
     REENTER = "Re-enter"
 
 class MessageTemplates():
+
+    UNKNOWN_CMD = \
+        """Command was not recognised. Use /help to view the commands you can use."""
+
     NEW_KRW_OVER_EUR_PROMPT = \
         """Please specify the following:
         Threshold value for Korean price being higher than European price (in %)"""
@@ -34,6 +38,11 @@ class MessageTemplates():
 
     CANCELLATION_PROMPT = "Threshold change cancelled."
 
+    HELP = """Commands: 
+    /start - Tell ArbitrageBot to start looking for new opportunities. 
+    /change_threshold - Change the threshold values used for finding new opportunities.
+    Values need to be in percentage. E.g. 8.0, 15, not 0.08, 0.15"""
+
 class ArbCallbacks():
 
     def __init__(self) -> None:
@@ -45,6 +54,12 @@ class ArbCallbacks():
             "KRW_OVER_EUR" : 1,
             "EUR_OVER_KRW" : 2
         }
+
+    def help(self, update, context):
+        context.bot.send_message(chat_id=update.effective_chat.id, text=MessageTemplates.HELP)
+
+    def unknown_cmd(self, update, context):
+        context.bot.send_message(chat_id=update.effective_chat.id, text=MessageTemplates.UNKNOWN_CMD)
 
     def start(self, update, context):
         CHAT_ID = update.effective_chat.id

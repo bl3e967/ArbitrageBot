@@ -62,8 +62,15 @@ def run():
         allow_reentry=True
     )
 
+    # deal with invlaid commands
+    unknown_cmd_handler = MessageHandler(Filters.command, arbCallback.unknown_cmd)
+
+    help_handler = CommandHandler("help", arbCallback.help)
+
+    dispatcher.add_handler(help_handler)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(threshold_change_handler)
+    dispatcher.add_handler(unknown_cmd_handler)
 
     updater.start_polling()
     updater.idle()
