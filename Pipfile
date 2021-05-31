@@ -5,6 +5,11 @@ name = "pypi"
 
 [packages]
 python-telegram-bot = "*"
+quandl = "*"
+krakenex = "*"
+pyupbit = "*"
+pyjwt = "*"
+pykrakenapi = "*"
 
 [dev-packages]
 
