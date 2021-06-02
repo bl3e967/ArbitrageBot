@@ -1,5 +1,6 @@
-import random
 import logging
+from ArbitrageFinder import MessageTemplates
+from DataSource import Kraken, FXRate, Upbit
 from config import ArbitrageFinder as FinderConfig
 
 logger = logging.getLogger(__name__)
@@ -10,35 +11,78 @@ class EnumArbOpportuity():
     NOOP = 0 
 
 class Exchanges():
-    EUR = "EUR"
-    KRW = "KRW"
+    EUR = "Kraken"
+    KRW = "Upbit"
 
 class Currencies():
     EUR = "EUR"
     KRW = "KRW"
 
+class Instrument():
+    def __init__(self, base, quote):
+        '''
+        Instrument BUY_LEG/SELL_LEG
+        '''
+        self.base = base
+        self.quote = quote
+        self.ticker = f"{self.base}/{self.quote}"
+
+    def __str__(self):
+        return self.ticker 
+
 class EnumInstrumentIDs():
-    BTCUSDT = "BTCUSDT"
-    ETHUSDT = "ETHUSDT"
+    BTCUSDT = Instrument("BTC", "USDT")
+    ETHUSDT = Instrument("ETH", "USDT")
+    XRPEUR = Instrument("XRP", "EUR")
 
 class ArbitrageOpportunity():
-    def __init__(self, arb_val, eur_price, krw_price, instrname):
+    def __init__(self, 
+                 arb_val:float, 
+                 eur_price:float, 
+                 krw_price:float, 
+                 eurkrw:float, 
+                 instrname:Instrument):
+
         self.instrument = instrname
+        self.eurkrw = eurkrw
         self.value = arb_val 
         self.size = abs(arb_val)
         self.direction = 1 if arb_val > 0 else 0 if arb_val == 0 else -1
         
         self.euro_price = eur_price 
+        self.euro_price_in_krw = eur_price * eurkrw 
+
         self.krw_price = krw_price
+        self.krw_price_in_eur = krw_price / eurkrw 
 
-        self.buy_price = self.euro_price if self.direction == EnumArbOpportuity.EUR2KRW else self.krw_price
-        self.sell_price = self.krw_price if self.direction == EnumArbOpportuity.EUR2KRW else self.euro_price
 
-        self.buy_exchg = Exchanges.EUR if self.direction == EnumArbOpportuity.EUR2KRW else Exchanges.KRW
-        self.sell_exchg = Exchanges.KRW if self.direction == EnumArbOpportuity.EUR2KRW else Exchanges.EUR
+        if self.direction == EnumArbOpportuity.EUR2KRW: 
+            
+            self.buy_price = self.euro_price 
+            self.sell_price = self.krw_price
 
-        self.buy_currency = Currencies.EUR if self.buy_exchg == EnumArbOpportuity.EUR2KRW else Exchanges.KRW
-        self.sell_currency = Currencies.KRW if self.buy_exchg == EnumArbOpportuity.EUR2KRW else Exchanges.EUR
+            self.buy_exchg = Exchanges.EUR 
+            self.sell_exchg = Exchanges.KRW 
+
+            self.buy_currency = Currencies.EUR 
+            self.sell_currency = Currencies.KRW 
+
+            self.buy_instrument = self.instrument.quote 
+            self.sell_instrument = self.instrument.base 
+
+        else: 
+
+            self.buy_price = self.krw_price 
+            self.sell_price = self.euro_price 
+
+            self.buy_exchg = Exchanges.KRW 
+            self.sell_exchg = Exchanges.EUR 
+
+            self.buy_currency = Currencies.KRW 
+            self.sell_currency = Currencies.EUR 
+
+            self.buy_instrument = self.instrument.base 
+            self.sell_instrument = self.instrument.quote 
 
 class Model():
     '''
@@ -57,36 +101,59 @@ class Model():
     def update_eur_over_krw_threshold(self, newval:float) -> None:
         self.eur_over_krw_threshold = newval
 
+    def check_if_any_thresh_exceeded(self, val):
+        '''
+        Check if value has exceeded any threshold
+        Returns: 
+            Bool, True if magnitude of value is smaller than any
+            threshold value, else False. 
+        '''
+        below_thresh1 = abs(val) < self.krw_over_eur_threshold
+        below_thresh2 = abs(val) < self.eur_over_krw_threshold
+        return below_thresh1 and below_thresh2 
+
     def find_arbitrage_opportunity(self):
         '''
-        Get coin price data for current datetime.
+        Get coin price data for current datetime. 
         Get EUR/KRW exchange rate. 
-        Calculate Arbitrage opportunity percentage.
+        Calculate Arbitrage opportunity percentage. 
         Return (int)1 if Buy in EUR and sell in KRW
         Return (int)-1 if Buy in KRW and sell in EUR 
-        Return (int)0 if not.
+        Return (int)0 if not. 
 
         Returns: 
             ArbitrageOpportunity: 
         '''
-        choices = [EnumArbOpportuity.EUR2KRW, EnumArbOpportuity.NOOP, EnumArbOpportuity.KRW2EUR]
-        p = [0.4, 0.1, 0.5]
-        opp = random.choices(choices, p)[0]
 
-        instr = random.choices([EnumInstrumentIDs.BTCUSDT, EnumInstrumentIDs.ETHUSDT], [0.5, 0.5])[0]
+        # get kraken price 
+        kraken_eur = Kraken.today_price(ticker=Kraken.KrakenTickers.XRPEUR)
 
-        arbSize = abs(random.gauss(0.05,0.03))
+        # get upbit price 
+        upbit_krw = Upbit.today_price(ticker=Upbit.UpbitTickers.XRPKRW)
 
-        eurprice = random.gauss(50000, 100)
-        krwprice = eurprice * (1 + opp*arbSize)
+        # get eurkrw exchange rate 
+        eurKrwRate = FXRate.today_price(ticker=FXRate.FXTickers.EURKRW)
 
-        return ArbitrageOpportunity(opp*arbSize, eur_price=eurprice, krw_price=krwprice, instrname=instr)
+        # convert upbit price to eur
+        upbit_eur = upbit_krw / eurKrwRate
+
+        # check if the price ratio is above/below threshold
+        arb_val = kraken_eur / upbit_eur - 1 
+        
+        if self.check_if_any_thresh_exceeded(arb_val): 
+            arb_val = EnumArbOpportuity.NOOP
+
+        return ArbitrageOpportunity(arb_val, 
+                                    eur_price=kraken_eur, 
+                                    krw_price=upbit_krw, 
+                                    eurkrw=eurKrwRate, 
+                                    instrname=EnumInstrumentIDs.XRPEUR)
 
     def run(self, context):
         job = context.job
         arbOpp = self.find_arbitrage_opportunity()
 
-        logger.debug(f"Arbitrage opportunity: \n\tValue: {arbOpp.value}\n\tBuy {arbOpp.buy_currency}\n\t{arbOpp.sell_currency}")
+        logger.debug(f"\nArbitrage opportunity: \nValue: {arbOpp.value}\nBuy {arbOpp.buy_currency}\nSell {arbOpp.sell_currency}")
 
         if arbOpp.direction != EnumArbOpportuity.NOOP:
 
