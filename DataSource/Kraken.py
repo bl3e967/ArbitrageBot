@@ -7,7 +7,7 @@ kraken = KrakenAPI(api)
 class KrakenTickers():
     XRPEUR = "XRPEUR"
 
-def today_price(ticker:KrakenTickers):
+def today_price(ticker:KrakenTickers) -> float:
     '''
     Return mid price for instrument. 
     Args:  
