@@ -17,5 +17,7 @@ def today_price(ticker:KrakenTickers) -> float:
     '''
     ohlc, _ = kraken.get_ohlc_data(ticker, interval=1)
     last_ohlc = ohlc.head(1)
-    return (last_ohlc.high + last_ohlc.low) / 2
+    
+    # access single row df with iloc method
+    return ((last_ohlc.high + last_ohlc.low) / 2).iloc[0]
     
