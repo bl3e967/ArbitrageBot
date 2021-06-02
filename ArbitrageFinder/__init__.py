@@ -90,14 +90,20 @@ class Model():
 
         if arbOpp.direction != EnumArbOpportuity.NOOP:
 
-            _msg = f"""Arbitrage Opportunity found for {arbOpp.instrument}
-            
-            Buy {arbOpp.instrument} in {arbOpp.buy_exchg} exchange
-            Sell {arbOpp.instrument} in {arbOpp.sell_exchg} exchange
-
-            {arbOpp.buy_exchg} Exchange {arbOpp.instrument} current price: {arbOpp.buy_price}
-            {arbOpp.sell_exchg} Exchange {arbOpp.instrument} current price: {arbOpp.sell_price}
-            """
+            _msg = MessageTemplates.newOpportunityFoundMsg.substitute(
+                {
+                    "INSTRNAME" : arbOpp.instrument,
+                    "BUY_INSTR" : arbOpp.buy_instrument, 
+                    "SELL_INSTR" : arbOpp.sell_instrument, 
+                    "BUY_EXCHG" : arbOpp.buy_exchg, 
+                    "SELL_EXCHG" : arbOpp.sell_exchg, 
+                    "EX_EUR_P_EUR" : format(arbOpp.euro_price, ".2f"), 
+                    "EX_EUR_P_KRW" : format(arbOpp.euro_price * arbOpp.eurkrw, ".2f"), 
+                    "EX_KRW_P_EUR" : format(arbOpp.krw_price / arbOpp.eurkrw, ".2f"), 
+                    "EX_KRW_P_KRW" : format(arbOpp.krw_price, ".2f"),
+                    "ArbSize" : format(arbOpp.size * 100, ".2f") # in percentage %
+                }
+            )
 
             context.bot.send_message(job.context, text=_msg)
 
