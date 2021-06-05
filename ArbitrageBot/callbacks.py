@@ -63,10 +63,12 @@ class ArbCallbacks():
 
     def start(self, update, context):
         CHAT_ID = update.effective_chat.id
-        context.bot.send_message(chat_id=CHAT_ID, text="Arbitrage Bot start method called")
+
+        logger.debug("Arbitrage Bot start method called")
 
         msg = "Adding arbModel.find_arbitrage_opportunity to queue"
         logger.debug(msg)
+        
         context.bot.send_message(
             chat_id=CHAT_ID, 
             text=f"""Model params: 
