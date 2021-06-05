@@ -94,6 +94,28 @@ class Model():
 
         self.krw_over_eur_threshold = krw_over_eur_thresh
         self.eur_over_krw_threshold = eur_over_krw_thresh
+        self.min_thresh_change = 0.005
+        
+        self._last_opp_dict = {
+            EnumArbOpportuity.EUR2KRW : self.get_NoArbOpp(),
+            EnumArbOpportuity.KRW2EUR : self.get_NoArbOpp()
+        }
+        
+        self._msg_sent_cnt_dict = {
+            EnumArbOpportuity.EUR2KRW : 0,
+            EnumArbOpportuity.KRW2EUR : 0
+        }
+
+        self.msg_sent_cnt = 0 
+
+    def get_NoArbOpp(self):
+        '''
+        Return a default ArbOpp object that has no opportunity. 
+        EURKRW needs to be non-zero to prevent division-by-zero error. 
+        '''
+        return ArbitrageOpportunity(arb_val=0, eur_price=0, 
+                                    krw_price=0, eurkrw=1, 
+                                    instrname=Instrument("None", "None"))
 
     def update_krw_over_eur_threshold(self, newval:float) -> None:
         self.krw_over_eur_threshold = newval 
@@ -149,30 +171,83 @@ class Model():
                                     eurkrw=eurKrwRate, 
                                     instrname=EnumInstrumentIDs.XRPEUR)
 
+    def should_we_send_message(self, arbOpp:ArbitrageOpportunity) -> bool: 
+        '''
+        Check if we should send a message: 
+            - Check if the opportunity size is significantly different that previous one
+              for which last message was sent. 
+        
+        Args: 
+            arbOpp : (ArbitrageOpportunity), latest arbitrage opportunity. 
+        
+        Returns: 
+            opp_sigf : (bool), is the opportunity is significant enough? 
+        '''
+        _LAST_OPP = self._last_opp_dict[arbOpp.direction]
+        _MSG_SENT_CNT = self._msg_sent_cnt_dict[arbOpp.direction]
+
+        # if we have never sent a message yet, then send it.
+        if _MSG_SENT_CNT == 0: 
+            self._last_opp_dict[arbOpp.direction] = arbOpp 
+            return True 
+        
+        diff = abs(_LAST_OPP.value - arbOpp.value)
+
+        # check if size of opp has changed significantly 
+        opp_sigf = diff > self.min_thresh_change
+
+        if opp_sigf: 
+            self._last_opp_dict[arbOpp.direction] = arbOpp
+
+        return opp_sigf  
+    
+    def purge_last_opp(self):
+        self._last_opp_dict[EnumArbOpportuity.EUR2KRW] = self.get_NoArbOpp()
+        self._last_opp_dict[EnumArbOpportuity.KRW2EUR] = self.get_NoArbOpp()
+
+    def purge_msg_cnts(self):
+        self._msg_sent_cnt_dict[EnumArbOpportuity.EUR2KRW] = 0
+        self._msg_sent_cnt_dict[EnumArbOpportuity.KRW2EUR] = 0
+
     def run(self, context):
         job = context.job
         arbOpp = self.find_arbitrage_opportunity()
 
         logger.debug(f"\nArbitrage opportunity: \nValue: {arbOpp.value}\nBuy {arbOpp.buy_currency}\nSell {arbOpp.sell_currency}")
 
-        if arbOpp.direction != EnumArbOpportuity.NOOP:
+        opp_found = arbOpp.direction != EnumArbOpportuity.NOOP 
 
-            _msg = MessageTemplates.newOpportunityFoundMsg.substitute(
-                {
-                    "INSTRNAME" : arbOpp.instrument,
-                    "BUY_INSTR" : arbOpp.buy_instrument, 
-                    "SELL_INSTR" : arbOpp.sell_instrument, 
-                    "BUY_EXCHG" : arbOpp.buy_exchg, 
-                    "SELL_EXCHG" : arbOpp.sell_exchg, 
-                    "EX_EUR_P_EUR" : format(arbOpp.euro_price, ".2f"), 
-                    "EX_EUR_P_KRW" : format(arbOpp.euro_price * arbOpp.eurkrw, ".2f"), 
-                    "EX_KRW_P_EUR" : format(arbOpp.krw_price / arbOpp.eurkrw, ".2f"), 
-                    "EX_KRW_P_KRW" : format(arbOpp.krw_price, ".2f"),
-                    "ArbSize" : format(arbOpp.size * 100, ".2f") # in percentage %
-                }
-            )
+        if opp_found:
 
-            context.bot.send_message(job.context, text=_msg)
+            # check if this opportunity is significantly different to last one
+            # or if the direction is different. We want to prevent spamming the 
+            # user every minute when the opportunity has not changed much. 
+            send_message = self.should_we_send_message(arbOpp)
+
+            if send_message: 
+                _msg = MessageTemplates.newOpportunityFoundMsg.substitute(
+                    {
+                        "INSTRNAME" : arbOpp.instrument,
+                        "BUY_INSTR" : arbOpp.buy_instrument, 
+                        "SELL_INSTR" : arbOpp.sell_instrument, 
+                        "BUY_EXCHG" : arbOpp.buy_exchg, 
+                        "SELL_EXCHG" : arbOpp.sell_exchg, 
+                        "EX_EUR_P_EUR" : format(arbOpp.euro_price, ".2f"), 
+                        "EX_EUR_P_KRW" : format(arbOpp.euro_price * arbOpp.eurkrw, ".2f"), 
+                        "EX_KRW_P_EUR" : format(arbOpp.krw_price / arbOpp.eurkrw, ".2f"), 
+                        "EX_KRW_P_KRW" : format(arbOpp.krw_price, ".2f"),
+                        "ArbSize" : format(arbOpp.size * 100, ".2f") # in percentage %
+                    }
+                )
+
+                context.bot.send_message(job.context, text=_msg)
+                self._msg_sent_cnt_dict[arbOpp.direction] += 1
+        
+        else: 
+            # If we lose the opportunity, reset this so that we flag the next new opportunity, 
+            # even if this is not as big as the previous opportunity. 
+            self.purge_last_opp()
+            self.purge_msg_cnts()
 
 def get_last_saved_thresholds(fname):
     '''
