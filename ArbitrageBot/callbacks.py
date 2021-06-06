@@ -184,6 +184,8 @@ class ArbCallbacks():
             logger.debug("Ending conversation handler")
             update.message.reply_text("Your threshold changes have been saved")
 
+            ArbitrageFinder.save_thresholds(FinderConfig.thresholds_save_path, self.model)
+
             # restart arb job with new thresholds 
             self.start(update, context)
 

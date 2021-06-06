@@ -1,3 +1,4 @@
+import json 
 import logging
 from ArbitrageFinder import MessageTemplates
 from DataSource import Kraken, FXRate, Upbit
@@ -107,6 +108,14 @@ class Model():
         }
 
         self.msg_sent_cnt = 0 
+
+    def get_thresholds(self)->dict:
+        '''Returns dictionary containing threshold values'''
+        return {
+            "KRW_OVER_EUR" : self.krw_over_eur_threshold, 
+            "EUR_OVER_KRW" : self.eur_over_krw_threshold,
+            "MIN_THRESH_CHANGE" : self.min_thresh_change
+        }
 
     def get_NoArbOpp(self):
         '''
@@ -249,19 +258,38 @@ class Model():
             self.purge_last_opp()
             self.purge_msg_cnts()
 
-def get_last_saved_thresholds(fname):
+def get_last_saved_thresholds(fpath):
     '''
     Get last used variable values from file.
     Override krw_threshold and eur_threshold values. 
     Returns: 
         tuple (krw_threshold, eur_threshold)
     '''
-    logger.info(f"Getting last saved thresholds from {fname}")
-    return (FinderConfig.krw_threshold, FinderConfig.eur_threshold)
+    logger.info(f"Getting last saved thresholds from {fpath}")
+    
+    try:    
+        with open(fpath) as json_file: 
+            logger.info(f"Loading thresholds from {fpath}")
+            thresh_dict = json.load(json_file)
+            thresh_tuple = (thresh_dict["KRW_OVER_EUR"], thresh_dict["EUR_OVER_KRW"])
+    except FileNotFoundError: 
+        logger.info(f"{fpath} not found so loading default thresholds values")
+        thresh_tuple = (FinderConfig.krw_threshold, FinderConfig.eur_threshold)
+
+    return thresh_tuple
+
+def save_thresholds(fpath, model:Model):
+    '''
+    Save model threshold values as json file.
+    '''
+    thresh_dict = model.get_thresholds()
+
+    with open(fpath, "w") as outfile: 
+        json.dump(thresh_dict, outfile)
 
 def get_model():
-    fname = FinderConfig.save_path
-    krw_threshold, eur_threshold = get_last_saved_thresholds(fname)
+    fpath = FinderConfig.thresholds_save_path
+    krw_threshold, eur_threshold = get_last_saved_thresholds(fpath)
     logger.info(f"Returning new arbitrage model")
     return Model(krw_over_eur_thresh=krw_threshold, 
                  eur_over_krw_thresh=eur_threshold)
