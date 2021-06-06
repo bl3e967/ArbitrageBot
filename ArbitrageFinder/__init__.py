@@ -3,6 +3,8 @@ import logging
 from ArbitrageFinder import MessageTemplates
 from DataSource import Kraken, FXRate, Upbit
 from config import ArbitrageFinder as FinderConfig
+from config import DEVELOPER_CHAT_ID
+import DataSource.Exceptions as DataExceptions
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +222,19 @@ class Model():
 
     def run(self, context):
         job = context.job
-        arbOpp = self.find_arbitrage_opportunity()
+
+        try: 
+            arbOpp = self.find_arbitrage_opportunity()
+        except DataExceptions.BaseDataConnectionError as e:
+
+            # send message to user 
+            context.bot.send_message(job.context, text=str(e))
+
+            # send message to dev 
+            tb_str = DataExceptions.get_traceback_str(e)
+            dev_msg = str(e) + "\n" + tb_str
+            context.bot.send_message(DEVELOPER_CHAT_ID, text=dev_msg)
+            return None 
 
         logger.debug(f"\nArbitrage opportunity: \nValue: {arbOpp.value}\nBuy {arbOpp.buy_currency}\nSell {arbOpp.sell_currency}")
 

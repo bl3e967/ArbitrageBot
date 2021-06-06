@@ -2,7 +2,9 @@ import logging
 import ArbitrageFinder 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import ConversationHandler
+from config import DEVELOPER_CHAT_ID
 from config import ArbitrageFinder as FinderConfig
+import DataSource.Exceptions as DataExceptions
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,9 @@ class MessageTemplates():
 
     UNKNOWN_CMD = \
         """Command was not recognised. Use /help to view the commands you can use."""
+
+    UNEXPECTED_ERROR = \
+        "Unexpected error has occurred"
 
     NEW_KRW_OVER_EUR_PROMPT = \
         """Please specify the following:
@@ -211,3 +216,26 @@ class ArbCallbacks():
         logger.info(f"User {user} cancelled threshold change")
         update.message.reply_text(MessageTemplates.CANCELLATION_PROMPT)
         return ConversationHandler.END
+
+def unknown_error_handler(update:object, context:"CallbackContext") -> None: 
+    msg = MessageTemplates.UNEXPECTED_ERROR
+    traceback_str = DataExceptions.get_traceback_str(context.error)
+    dev_msg = msg + "\n" + traceback_str
+    
+    context.bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=dev_msg)
+
+    user_msg = MessageTemplates.UNEXPECTED_ERROR + "\n" + \
+        "Please restart the bot by using the /start command." + \
+        "If the issue persists, please try restarting the ArbitrageBot service on your laptop."
+    
+    all_users = context.dispatcher.user_data.keys() if update is None else [update.effective_chat.id]
+    for user in all_users: 
+        if user == DEVELOPER_CHAT_ID:
+            break
+        context.bot.send_message(chat_id=user, text=user_msg)
+
+    return None 
+
+def error_handler(update:object, context:"CallbackContext"):
+    unknown_error_handler(update, context)
+    

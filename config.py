@@ -1,5 +1,7 @@
 import os 
 
+DEVELOPER_CHAT_ID = 1464783645
+
 class ArbitrageBot():
     token = "1898855073:AAG5061qolcKCpr9ue8K0VeXbCGa9X9HxYg"
 

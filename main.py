@@ -72,6 +72,9 @@ def run():
     dispatcher.add_handler(threshold_change_handler)
     dispatcher.add_handler(unknown_cmd_handler)
 
+    # error handlers
+    dispatcher.add_error_handler(callbacks.error_handler)
+
     updater.start_polling()
     updater.idle()
 
