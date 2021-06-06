@@ -48,6 +48,8 @@ class MessageTemplates():
     /change_threshold - Change the threshold values used for finding new opportunities.
     Values need to be in percentage. E.g. 8.0, 15, not 0.08, 0.15"""
 
+    PAUSE = """Pausing message service. To restart, please use the /start command."""
+
 class ArbCallbacks():
 
     def __init__(self) -> None:
@@ -65,6 +67,12 @@ class ArbCallbacks():
 
     def unknown_cmd(self, update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=MessageTemplates.UNKNOWN_CMD)
+
+    def pause(self, update, context):
+        CHAT_ID = update.effective_chat.id 
+        job_name = str(CHAT_ID)
+        self.remove_arb_jobs(job_name, context)
+        context.bot.send_message(chat_id=CHAT_ID, text=MessageTemplates.PAUSE)
 
     def start(self, update, context):
         CHAT_ID = update.effective_chat.id

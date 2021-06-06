@@ -66,12 +66,16 @@ def run():
     unknown_cmd_handler = MessageHandler(Filters.command, arbCallback.unknown_cmd)
 
     help_handler = CommandHandler("help", arbCallback.help)
+    pause_handler = CommandHandler("pause", arbCallback.pause)
 
+
+    # commands 
     dispatcher.add_handler(help_handler)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(threshold_change_handler)
+    dispatcher.add_handler(pause_handler)
     dispatcher.add_handler(unknown_cmd_handler)
-
+    
     # error handlers
     dispatcher.add_error_handler(callbacks.error_handler)
 
