@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.DEBUG)
 
 def run():
-    updater = Updater(token=BotConfig.token, use_context=True)
+    updater = Updater(token=BotConfig.dev_token, use_context=True)
     dispatcher = updater.dispatcher
     
     arbCallback = callbacks.ArbCallbacks()
