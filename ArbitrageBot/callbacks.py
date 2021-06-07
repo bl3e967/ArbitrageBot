@@ -45,8 +45,11 @@ class MessageTemplates():
 
     HELP = """Commands: 
     /start - Tell ArbitrageBot to start looking for new opportunities. 
+    /pause - Stop ArbitrageBot from sending messages. Use the /start command to start 
+             sending messages again. 
     /change_threshold - Change the threshold values used for finding new opportunities.
-    Values need to be in percentage. E.g. 8.0, 15, not 0.08, 0.15"""
+    Values need to be in percentage. E.g. 8.0, 15, not 0.08, 0.15
+    """
 
     PAUSE = """Pausing message service. To restart, please use the /start command."""
 
@@ -82,12 +85,17 @@ class ArbCallbacks():
         msg = "Adding arbModel.find_arbitrage_opportunity to queue"
         logger.debug(msg)
         
+        txt = \
+        f"""Starting ArbitrageBot messaging service.
+        Using Model parameters: 
+        Thresholds: 
+            European price greater than Korean price : {self.model.buy_krw_sell_eur_thresh*100}%
+            Korean price greater than European price : {self.model.buy_eur_sell_krw_thresh*100}%"""
+
         context.bot.send_message(
             chat_id=CHAT_ID, 
-            text=f"""Model params: 
-        Thresholds: 
-            EUR Over KRW : {self.model.eur_over_krw_threshold*100}%
-            KRW Over EUR : {self.model.krw_over_eur_threshold*100}%""")
+            text=txt 
+        )
 
         _JOB_TIME_DELAY = 10 # arbitrary 10 second delay for starting the job
         self.job = context.job_queue.run_repeating(callback=self.model.run, 
@@ -140,10 +148,10 @@ class ArbCallbacks():
             return ThresholdChangeStates.recv_krw_over_eur
 
         new_thresh = threshVal
-        old_thresh = self.model.krw_over_eur_threshold * 100
+        old_thresh = self.model.buy_eur_sell_krw_thresh * 100
 
         # value needs to be decimal
-        self.model.update_krw_over_eur_threshold(new_thresh / 100)
+        self.model.update_buy_eur_sell_krw_thresh(new_thresh / 100)
 
         update.message.reply_text(
             "Changed threshold for Korean price being higher" + 
@@ -161,10 +169,10 @@ class ArbCallbacks():
 
         try: 
             new_thresh = float(userText)
-            old_thresh = self.model.eur_over_krw_threshold * 100 # to percentage
+            old_thresh = self.model.buy_krw_sell_eur_thresh * 100 # to percentage
                 
             # val needs to be decimal
-            self.model.update_eur_over_krw_threshold(new_thresh/100)
+            self.model.update_buy_krw_sell_eur_thresh(new_thresh/100)
 
             update.message.reply_text(
                 "Changed threshold for European price being higher" + 
@@ -182,8 +190,8 @@ class ArbCallbacks():
         keyboard_entry = [MarkupKeyboard.CONFIRM, MarkupKeyboard.REENTER]
         update.message.reply_text(
             f"""Please confirm the new thresholds: 
-            EUR greater than KRW : {self.model.eur_over_krw_threshold * 100}%
-            KRW greater than EUR : {self.model.krw_over_eur_threshold * 100}%""",
+            European price greater than Korean price : {self.model.buy_krw_sell_eur_thresh * 100}%
+            Korean greater than European price : {self.model.buy_eur_sell_krw_thresh * 100}%""",
             reply_markup=ReplyKeyboardMarkup([keyboard_entry], one_time_keyboard=True)
         )
 

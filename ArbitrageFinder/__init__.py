@@ -9,8 +9,8 @@ import DataSource.Exceptions as DataExceptions
 logger = logging.getLogger(__name__)
 
 class EnumArbOpportuity():
-    EUR2KRW = 1  # buy in eur and sell in krw 
-    KRW2EUR = -1 # buy in krw and sell in eur 
+    EUR2KRW = -1  # buy in eur and sell in krw 
+    KRW2EUR = 1 # buy in krw and sell in eur 
     NOOP = 0 
 
 class Exchanges():
@@ -91,12 +91,12 @@ class Model():
     '''
     Model to find arbitrage opportunities. 
     '''
-    def __init__(self, krw_over_eur_thresh, eur_over_krw_thresh):
+    def __init__(self, buy_eur_sell_krw_thresh, buy_krw_sell_eur_thresh):
 
         self.job = None 
 
-        self.krw_over_eur_threshold = krw_over_eur_thresh
-        self.eur_over_krw_threshold = eur_over_krw_thresh
+        self.buy_eur_sell_krw_thresh = buy_eur_sell_krw_thresh
+        self.buy_krw_sell_eur_thresh = buy_krw_sell_eur_thresh
         self.min_thresh_change = 0.005
         
         self._last_opp_dict = {
@@ -114,8 +114,8 @@ class Model():
     def get_thresholds(self)->dict:
         '''Returns dictionary containing threshold values'''
         return {
-            "KRW_OVER_EUR" : self.krw_over_eur_threshold, 
-            "EUR_OVER_KRW" : self.eur_over_krw_threshold,
+            "BUY_EUR_SELL_KRW" : self.buy_eur_sell_krw_thresh, 
+            "BUY_KRW_SELL_EUR" : self.buy_krw_sell_eur_thresh,
             "MIN_THRESH_CHANGE" : self.min_thresh_change
         }
 
@@ -128,22 +128,27 @@ class Model():
                                     krw_price=0, eurkrw=1, 
                                     instrname=Instrument("None", "None"))
 
-    def update_krw_over_eur_threshold(self, newval:float) -> None:
-        self.krw_over_eur_threshold = newval 
+    def update_buy_eur_sell_krw_thresh(self, newval:float) -> None:
+        self.buy_eur_sell_krw_thresh = newval 
 
-    def update_eur_over_krw_threshold(self, newval:float) -> None:
-        self.eur_over_krw_threshold = newval
+    def update_buy_krw_sell_eur_thresh(self, newval:float) -> None:
+        self.buy_krw_sell_eur_thresh = newval
 
-    def check_if_any_thresh_exceeded(self, val):
+    def check_if_thresh_not_exceeded(self, val):
         '''
         Check if value has exceeded any threshold
         Returns: 
             Bool, True if magnitude of value is smaller than any
             threshold value, else False. 
         '''
-        below_thresh1 = abs(val) < self.krw_over_eur_threshold
-        below_thresh2 = abs(val) < self.eur_over_krw_threshold
-        return below_thresh1 and below_thresh2 
+        # buy in eur sell in krw is negative
+        if val < 0:
+            return -val < self.buy_eur_sell_krw_thresh
+        # buy in krw sell in eur is positive 
+        elif val > 0:
+            return val < self.buy_krw_sell_eur_thresh 
+        else: 
+            return False 
 
     def find_arbitrage_opportunity(self):
         '''
@@ -173,7 +178,7 @@ class Model():
         # check if the price ratio is above/below threshold
         arb_val = kraken_eur / upbit_eur - 1 
         
-        if self.check_if_any_thresh_exceeded(arb_val): 
+        if self.check_if_thresh_not_exceeded(arb_val): 
             arb_val = EnumArbOpportuity.NOOP
 
         return ArbitrageOpportunity(arb_val, 
@@ -275,9 +280,9 @@ class Model():
 def get_last_saved_thresholds(fpath):
     '''
     Get last used variable values from file.
-    Override krw_threshold and eur_threshold values. 
+    Override buy_eur_sell_krw_thresh and buy_krw_sell_eur_thresh values. 
     Returns: 
-        tuple (krw_threshold, eur_threshold)
+        tuple (buy_eur_sell_krw_thresh, buy_krw_sell_eur_thresh)
     '''
     logger.info(f"Getting last saved thresholds from {fpath}")
     
@@ -285,10 +290,10 @@ def get_last_saved_thresholds(fpath):
         with open(fpath) as json_file: 
             logger.info(f"Loading thresholds from {fpath}")
             thresh_dict = json.load(json_file)
-            thresh_tuple = (thresh_dict["KRW_OVER_EUR"], thresh_dict["EUR_OVER_KRW"])
+            thresh_tuple = (thresh_dict["BUY_EUR_SELL_KRW"], thresh_dict["BUY_KRW_SELL_EUR"])
     except FileNotFoundError: 
         logger.info(f"{fpath} not found so loading default thresholds values")
-        thresh_tuple = (FinderConfig.krw_threshold, FinderConfig.eur_threshold)
+        thresh_tuple = (FinderConfig.buy_eur_sell_krw_thresh, FinderConfig.buy_krw_sell_eur_thresh)
 
     return thresh_tuple
 
@@ -303,7 +308,7 @@ def save_thresholds(fpath, model:Model):
 
 def get_model():
     fpath = FinderConfig.thresholds_save_path
-    krw_threshold, eur_threshold = get_last_saved_thresholds(fpath)
+    buy_eur_sell_krw_thresh, buy_krw_sell_eur_thresh = get_last_saved_thresholds(fpath)
     logger.info(f"Returning new arbitrage model")
-    return Model(krw_over_eur_thresh=krw_threshold, 
-                 eur_over_krw_thresh=eur_threshold)
+    return Model(buy_eur_sell_krw_thresh=buy_eur_sell_krw_thresh, 
+                 buy_krw_sell_eur_thresh=buy_krw_sell_eur_thresh)
