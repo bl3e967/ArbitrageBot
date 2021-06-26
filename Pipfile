@@ -10,6 +10,7 @@ krakenex = "*"
 pyupbit = "*"
 pyjwt = "*"
 pykrakenapi = "*"
+pyinstaller = "*"
 
 [dev-packages]
 
