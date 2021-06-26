@@ -1,1 +1,4 @@
 *.pyc
+./.vscode/*
+./build/*
+launch.json
