@@ -7,7 +7,11 @@ logger = logging.getLogger(__name__)
 
 DEVELOPER_CHAT_ID = 1464783645
 
-ROOT_DIR = ".\\Resources\\"
+RESOURCES_DIR = ".\\Resources\\"
+
+# !!! If this changes, update .gitignore
+DIST_PATH = "./bin/dist/"
+WORK_PATH = "./bin/build/"
 
 class Env():
     Prod = "Prod"
@@ -17,7 +21,7 @@ class ArbitrageBot():
     dev_token = "1898855073:AAG5061qolcKCpr9ue8K0VeXbCGa9X9HxYg"
     prod_token = "1889892335:AAE6Pa1QMUlA30JpfZzfzOpurqy4Lt88ufA"
     token = None 
-    config_path = os.path.join(ROOT_DIR, "Environment.json")
+    config_path = os.path.join(RESOURCES_DIR, "Environment.json")
 
     @classmethod 
     def get_env(cls):
@@ -59,4 +63,4 @@ class ArbitrageFinder():
     job_run_interval = 60 # 1 minute
 
     threshold_filename = "thresholds.json"
-    thresholds_save_path = os.path.join(ROOT_DIR, threshold_filename)
+    thresholds_save_path = os.path.join(RESOURCES_DIR, threshold_filename)
