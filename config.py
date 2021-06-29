@@ -25,11 +25,8 @@ class ArbitrageBot():
 
     @classmethod 
     def get_env(cls):
-        with open(cls.config_path) as f: 
-            config_dict = json.load(f)
-        
         try:
-            env = config_dict["ENV"]
+            env = os.environ["ArbyEnv"]
             logger.debug(f"Using {env} environment settings")
         except KeyError: 
             logger.warn("No environment details found. Using Dev settings.")
