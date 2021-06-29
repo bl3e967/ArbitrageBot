@@ -21,7 +21,6 @@ class ArbitrageBot():
     dev_token = "1898855073:AAG5061qolcKCpr9ue8K0VeXbCGa9X9HxYg"
     prod_token = "1889892335:AAE6Pa1QMUlA30JpfZzfzOpurqy4Lt88ufA"
     token = None 
-    config_path = os.path.join(RESOURCES_DIR, "Environment.json")
 
     @classmethod 
     def get_env(cls):
