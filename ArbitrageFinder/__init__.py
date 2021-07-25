@@ -1,3 +1,4 @@
+import pathlib
 import json 
 import logging
 from ArbitrageFinder import MessageTemplates
@@ -297,11 +298,15 @@ def get_last_saved_thresholds(fpath):
 
     return thresh_tuple
 
-def save_thresholds(fpath, model:Model):
+def save_thresholds(fpath:str, model:Model):
     '''
     Save model threshold values as json file.
     '''
     thresh_dict = model.get_thresholds()
+
+    basedir = pathlib.Path(fpath).parent.absolute()
+    if not pathlib.Path.exists(basedir):
+        pathlib.Path.mkdir(basedir)
 
     with open(fpath, "w") as outfile: 
         json.dump(thresh_dict, outfile)
