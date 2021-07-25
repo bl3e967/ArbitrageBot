@@ -8,4 +8,4 @@ Telegram bot for identifying bitcoin arbitrage opportunities
 
 - SSH into Oracle production server. 
 - Fetch the latest changes and checkout the new tag. 
-- execute `./Arby`. If you get a `permission denied` error, use `chmod u+x Arby' to make it executable. 
+- execute `./Arby`. If you get a `permission denied` error, use `chmod u+x Arby` to make it executable. 
