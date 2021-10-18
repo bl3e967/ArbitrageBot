@@ -1,0 +1,6 @@
+*.pyc
+./.vscode/*
+./build/*
+launch.json
+bin/
+*.spec
