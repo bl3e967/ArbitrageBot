@@ -57,6 +57,7 @@ class ArbitrageFinder():
     buy_krw_sell_eur_thresh = 0.08
 
     job_run_interval = 60 # 1 minute
+    job_num_retries = 5
 
     threshold_filename = "thresholds.json"
     thresholds_save_path = os.path.join(RESOURCES_DIR, threshold_filename)

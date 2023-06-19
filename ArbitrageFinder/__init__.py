@@ -1,7 +1,7 @@
 import pathlib
 import json 
 import logging
-from ArbitrageFinder import MessageTemplates
+from ArbitrageFinder import MessageTemplates, decorator
 from DataSource import Kraken, FXRate, Upbit
 from config import ArbitrageFinder as FinderConfig
 from config import DEVELOPER_CHAT_ID
@@ -151,6 +151,7 @@ class Model():
         else: 
             return False 
 
+    @decorator.retry(times=FinderConfig.job_num_retries, exceptions=(Exception))
     def find_arbitrage_opportunity(self):
         '''
         Get coin price data for current datetime. 
@@ -232,10 +233,6 @@ class Model():
         try: 
             arbOpp = self.find_arbitrage_opportunity()
         except DataExceptions.BaseDataConnectionError as e:
-
-            # send message to user 
-            context.bot.send_message(job.context, text=str(e))
-
             # send message to dev 
             tb_str = DataExceptions.get_traceback_str(e)
             dev_msg = str(e) + "\n" + tb_str

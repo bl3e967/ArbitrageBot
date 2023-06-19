@@ -17,6 +17,10 @@ class QuandlConnectionError(BaseDataConnectionError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
+class MaxRetriesReachedError(BaseDataConnectionError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
 def get_traceback_str(err:Exception) -> str: 
     '''Returns traceback information as string given an Exception.
     Arg: 
