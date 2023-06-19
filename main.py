@@ -1,7 +1,5 @@
 import logging
-from typing import Text 
-import ArbitrageFinder 
-from ArbitrageBot import callbacks, Regex
+from ArbitrageBot import callbacks
 from config import ArbitrageBot as BotConfig 
 from telegram.ext import (
     Updater, 
